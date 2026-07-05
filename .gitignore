@@ -1,0 +1,24 @@
+# Environments
+venv/
+.tmp_venv/
+.env
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.sqlite3
+
+# Node.js
+node_modules/
+dist/
+build/
+.npm
+
+# Docker
+postgres_data/
+redis_data/
+
+# OS
+.DS_Store
+Thumbs.db
