@@ -1,88 +1,96 @@
 # AI Resume Analyzer
 
-## 1. Loyihaning umumiy tavsifi (Overview)
-**Muammo va Yechim:**  
-Ish qidiruvchilar ko'pincha o'z rezyumelarini qanday yaxshilashni yoki ATS (Applicant Tracking System) tizimlaridan qanday qilib muvaffaqiyatli o'tishni bilishmaydi. "AI Resume Analyzer" foydalanuvchilarning PDF/DOCX formatdagi rezyumelarini qabul qilib, Google Gemini AI yordamida chuqur tahlil qiladi. Tizim rezyume uchun ATS balini hisoblaydi, yetishmayotgan kalit so'zlarni topadi, grammatik xatolarni ko'rsatadi va avtomatik tarzda yangilangan rezyume matni, Cover Letter hamda LinkedIn xulosasini tayyorlab beradi. Bu loyiha Telegram Mini App ko'rinishida ishlangan bo'lib, foydalanuvchilarga eng oson va zamonaviy interfeysni taqdim etadi.
+[![tests](https://github.com/Lochinbek-Rasuljonov/ai-resume-analyzer/actions/workflows/tests.yml/badge.svg)](https://github.com/Lochinbek-Rasuljonov/ai-resume-analyzer/actions/workflows/tests.yml)
 
-**Loyiha roli:**  
-**Solo/Lead Developer (Full Stack Engineer)** – Men ushbu loyihaning arxitekturasini loyihalashtirishdan tortib, frontend qismini (React/TypeScript), asinxron ishlashga moslashtirilgan backend tizimini (Django/Celery/Redis) qurish va sun'iy intellekt (Gemini) integratsiyasi hamda Telegram bot sozlamalari, Docker yordamida serverga joylash ishlarini to'liq o'zim amalga oshirdim.
+A Telegram Mini App that reviews resumes with Google Gemini. A user uploads a PDF or DOCX file and gets:
 
-## 2. Texnologiyalar steki (Tech Stack)
-- **Asosiy Til va Freymvorklar:** Python, Django, Django REST Framework (DRF) — orqa qism API larini qurish va boshqarish uchun; React (Vite), TypeScript, Framer Motion — zamonaviy, tezkor va chiroyli animatsiyalarga ega Frontend uchun.
-- **Ma'lumotlar bazasi:** PostgreSQL — relyatsion ma'lumotlarni ishonchli va tez saqlash uchun tanlandi (SQLite ga qaraganda production muhiti uchun kuchliroq va parallel so'rovlarni oson boshqaradi).
-- **Kesh va Navbatlar (Caching & Message Broker):** Redis va Celery — AI modeliga (Gemini) qilingan so'rovlar odatda 10-30 soniya vaqt oladi. Ushbu asinxron ishlarni background'ga o'tkazish (navbatga qatorlash) va natijani vaqtincha saqlash uchun qullanildi.
-- **Konteynerizatsiya va Deploy:** Docker, Docker Compose, Nginx — Loyihaning barcha xizmatlarini (frontend, backend, celery, redis, db) izolyatsiyada, xatosiz ishga tushirish uchun Docker ishlatildi. Nginx esa reverse-proxy vazifasini bajaradi.
-- **Uchinchi tomon integratsiyalari:** 
-  - **Google Gemini AI API** — rezyume matnini semantik va chuqur tahlil qilish uchun.
-  - **Telegram Bot API** — Mini App interfeysini integratsiya qilish uchun.
+- an ATS score and scores for grammar, readability and professionalism
+- missing skills and keyword matches
+- notes on experience and education, with concrete suggestions
+- a rewritten resume, a cover letter, a LinkedIn summary and interview tips
 
-## 3. Texnik murakkabliklar va Yechimlar (Engineering Challenges)
-**Qiyin vazifa:**  
-Rezyumelarni Gemini AI orqali tahlil qilish juda katta hajmdagi tekstni o'qib, analiz qilib, keng qamrovli JSON javob qaytarishni talab qiladi. Bu jarayon 15-30 soniya davom etishi mumkin. Agar tahlil sinxron (oddiy HTTP so'rov ko'rinishida) qilinganda, foydalanuvchi interfeysi (UI) qotib qolardi va server "Timeout" xatoligini berardi. Eng yomoni, bir vaqtning o'zida bir nechta foydalanuvchi ishlatsa, tizim qulab tushishi mumkin edi.
+The answers come in Uzbek, Karakalpak, Russian or English.
 
-**Sizning yechimingiz:**  
-Tizim arxitekturasini to'liq asinxron ishlashga moslashtirdim. Rezyume yuklanganda, API uzoq kutib turmasdan darhol javob (Task ID) qaytaradi. Barcha og'ir tahlil qilish jarayonlarini **Celery va Redis** yordamida "Background Worker" larga topshirdim. Frontend esa belgilangan Task ID orqali "polling" qilib, statusni tekshirib turadi va jarayon (Processing -> Completed) tugagan zahotiyoq natijani silliq animatsiya bilan ekranga chiqaradi. Bu yechim tufayli API so'rovlarni qabul qilish tezligi millisoniyalarga tushdi, "Timeout" larning oldi olindi va server katta yuklamalarga chidamli holatga keltirildi.
+## Stack
 
-## 4. Tizim arxitekturasi va Ma'lumotlar bazasi sxemasi (Database Schema)
-Ma'lumotlar bazasi asosan quyidagi 3 ta asosiy jadvaldan (One-to-Many va One-to-One munosabatlari) tashkil topgan:
+- **Backend:** Python, Django, Django REST Framework, SimpleJWT, PostgreSQL
+- **Background jobs:** Celery with Redis. A Gemini analysis takes 10–30 seconds, so it runs in a worker while the app polls for the result.
+- **Frontend:** React, TypeScript, Vite, TanStack Query, Framer Motion, served by nginx
+- **Telegram:** a Mini App, plus a small bot (pyTelegramBotAPI) that opens it
+- **Deployment:** Docker Compose with six services: frontend, backend, Celery worker, Telegram bot, PostgreSQL and Redis
+
+## How it works
+
+1. **Login.** The Mini App sends Telegram's signed `initData`. The backend checks its HMAC signature with the bot token and refuses data older than 24 hours. It then creates or updates the user and returns JWT tokens.
+2. **Upload.** The backend accepts only PDF and DOCX files up to 10 MB and reads the text right away. A file with no readable text is refused and costs nothing. Every user gets 3 free analyses; the credit is taken with a single conditional `UPDATE`, so parallel uploads can't overspend.
+3. **Analysis.** A Celery task asks Gemini for two JSON answers (the evaluation, then the rewritten documents) using Gemini's JSON response mode. Scores are clamped to 0–100. If anything fails, the resume is marked `FAILED` and the credit is given back.
+4. **Results.** The dashboard polls every 3 seconds while an analysis is running and shows each finished resume's ATS score.
+
+## API
+
+| Method | Path | What it does |
+|---|---|---|
+| `POST` | `/api/users/auth/telegram/` | Log in with Telegram `initData`, returns JWT tokens |
+| `POST` | `/api/users/auth/refresh/` | Get a new access token |
+| `GET` | `/api/users/me/` | Current user and remaining credits |
+| `GET` | `/api/resumes/` | The user's resumes with status and ATS score |
+| `POST` | `/api/resumes/` | Upload a resume (`file`, `language`); starts the analysis |
+| `GET`, `DELETE` | `/api/resumes/{id}/` | One resume, or delete it with its file |
+| `GET` | `/api/analysis/{resume_id}/` | The full analysis once it is finished |
+
+## Data model
 
 ```mermaid
 erDiagram
-    USER ||--o{ RESUME : "uploads (1:M)"
+    USER ||--o{ RESUME : uploads
+    RESUME ||--o| ANALYSIS_RESULT : has
     USER {
-        int id PK
-        string telegram_id
-        string first_name
+        bigint telegram_id
         string username
+        bool is_premium
         int credits
     }
-    RESUME ||--|| ANALYSIS : "has (1:1)"
     RESUME {
-        int id PK
-        int user_id FK
-        string file_path
-        string original_text
-        datetime uploaded_at
-    }
-    ANALYSIS {
-        int id PK
-        int resume_id FK
-        string task_id
+        file file
+        string original_filename
+        text extracted_text
+        string language
         string status
-        json ai_result_data
+        bool charged
+    }
+    ANALYSIS_RESULT {
+        int ats_score
+        int grammar_score
+        json missing_skills
+        json keyword_matching
+        text cover_letter
+        text linkedin_summary
     }
 ```
 
-## 5. Loyiha statistikasi (Stats & Metrics)
-- **Mikroservislar (Konteynerlar):** 5 xil xizmat (Frontend, Backend, Postgres, Redis, Celery).
-- **API Endpoints:** Loyiha davomida jami 10 dan ortiq RESTful API endpointlar yaratilgan (fayl yuklash, autentifikatsiya, statusni asinxron tekshirish, natijalarni olish, foydalanuvchi ma'lumotlarini tahrirlash).
-- **Qator kodlar (Lines of Code):** ~5K+ (Frontend interfeys va Backend logikasi to'liq yozib chiqilgan).
-
-## 6. API Hujjatlari (API Documentation)
-Loyihaning Backend qismi toza REST API arxitekturasida yozilgan. Frontend ham aynan shu tizimda ishlaydi:
-- `POST /api/resumes/upload/` -> rezyume yuborish, asinxron Celery Task ishga tushadi (Response: `task_id` va `202 Accepted`).
-- `GET /api/analysis/status/{task_id}/` -> backend ish holatini qaytaradi (`PENDING`, `PROCESSING`, `COMPLETED`, `FAILED`).
-- `GET /api/analysis/result/{task_id}/` -> tahlil muvaffaqiyatli tugasa, Gemini dan olingan JSON ma'lumotlarni (ATS bali, xatolar, tavsiyalar) taqdim etadi.
-
-## 7. Loyihani ishga tushirish (Installation & Setup)
-Loyihani o'z kompyuteringizda yoki serverda osongina ishga tushirish uchun Docker yordam beradi:
+## Run it
 
 ```bash
-# 1. Repozitoriyni yuklab olish
 git clone https://github.com/Lochinbek-Rasuljonov/ai-resume-analyzer.git
 cd ai-resume-analyzer
-
-# 2. Atrof-muhit o'zgaruvchilarini (.env) sozlash
-# backend/.env faylini oching va quyidagi o'zgaruvchilarni kiriting:
-# TELEGRAM_BOT_TOKEN=...
-# GEMINI_API_KEY=...
-# WEBAPP_URL=...
-
-# 3. Docker orqali birgina buyruq bilan barcha 5 ta konteynerni ishga tushirish:
-docker-compose up --build -d
+cp backend/.env.example backend/.env   # fill in SECRET_KEY, TELEGRAM_BOT_TOKEN, WEBAPP_URL, GEMINI_API_KEY
+docker compose up --build -d
 ```
-Loyiha ishga tushgach, tizim avtomatik tarzda `http://localhost:5173` (Frontend) va `http://localhost:8000` (Backend) portlarida ishlaydi.
 
-## 8. Havolalar (Links)
-- **GitHub Repository:** [https://github.com/Lochinbek-Rasuljonov/ai-resume-analyzer](https://github.com/Lochinbek-Rasuljonov/ai-resume-analyzer)
-- **Live Demo:** Telegram Mini App tarmog'ida ishlab turibdi.
+The frontend runs on `http://localhost:5173` and the API on `http://localhost:8000`. Telegram only opens Mini Apps over HTTPS, so `WEBAPP_URL` must be a public HTTPS address of the frontend, for example a tunnel during development.
+
+To open the frontend in a normal browser during development, print signed test `initData` and give it to Vite:
+
+```bash
+cd backend && python manage.py dev_init_data        # needs TELEGRAM_BOT_TOKEN
+cd ../frontend && VITE_DEV_INIT_DATA='<printed value>' npm run dev
+```
+
+## Tests
+
+```bash
+cd backend && SECRET_KEY=test python manage.py test
+cd frontend && npm run lint && npm run build
+```
+
+The backend tests cover the Telegram signature check (forged, tampered, old and foreign-bot data are refused), uploads, credits and refunds, access to other users' data, and the analysis task with a mocked Gemini client. GitHub Actions runs everything on every push.

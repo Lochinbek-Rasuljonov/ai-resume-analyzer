@@ -3,10 +3,11 @@ import { useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Upload as UploadIcon, X, FileText, Sparkles } from 'lucide-react';
+import axios from 'axios';
 import api from '../services/api';
-import { useLang } from '../store/LangContext';
+import { tg } from '../telegram';
+import { useLang } from '../store/hooks';
 
-const tg = (window as any).Telegram?.WebApp;
 
 const Upload: React.FC = () => {
   const [file, setFile] = useState<File | null>(null);
@@ -47,9 +48,10 @@ const Upload: React.FC = () => {
       if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
       queryClient.invalidateQueries({ queryKey: ['resumes'] });
       navigate('/');
-    } catch (e: any) {
+    } catch (e) {
       if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('error');
-      setError(e.response?.data?.error || t('errUpload'));
+      const data = axios.isAxiosError(e) ? e.response?.data : undefined;
+      setError(data?.error || data?.file?.[0] || t('errUpload'));
       setIsUploading(false);
     }
   };

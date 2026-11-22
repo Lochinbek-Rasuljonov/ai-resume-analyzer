@@ -2,12 +2,12 @@ import React, { useEffect, useState } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Home, FileText, User, Sun, Moon, Globe } from 'lucide-react';
-import { useLang } from '../store/LangContext';
-import { useTheme } from '../store/ThemeContext';
+import { useLang } from '../store/hooks';
+import { useTheme } from '../store/hooks';
 import { langLabels, type Lang } from '../i18n';
 import { Logo } from './Logo';
+import { tg } from '../telegram';
 
-const tg = (window as any).Telegram?.WebApp;
 const LANGS: Lang[] = ['uz', 'kk', 'ru', 'en'];
 
 const Layout: React.FC = () => {

@@ -27,6 +27,8 @@ class Resume(models.Model):
         FAILED = 'FAILED', 'Failed'
         
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.PENDING)
+    # True when a credit was taken for this analysis, so it can be given back if the analysis fails
+    charged = models.BooleanField(default=False)
 
     def __str__(self):
         return f"{self.original_filename} ({self.user.username})"

@@ -32,7 +32,7 @@ api.interceptors.response.use(
                         return api(originalRequest);
                     }
                 }
-            } catch (refreshError) {
+            } catch {
                 // Refresh failed, logout user
                 localStorage.removeItem('access_token');
                 localStorage.removeItem('refresh_token');

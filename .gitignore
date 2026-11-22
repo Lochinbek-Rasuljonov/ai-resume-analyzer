@@ -23,3 +23,6 @@ dist-ssr/
 # Other
 media/
 staticfiles/
+
+# Databases
+*.sqlite3

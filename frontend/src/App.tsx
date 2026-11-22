@@ -1,9 +1,10 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { AuthProvider, useAuth } from './store/AuthContext';
+import { AuthProvider } from './store/AuthContext';
+import { useAuth, useLang } from './store/hooks';
 import { ThemeProvider } from './store/ThemeContext';
-import { LangProvider, useLang } from './store/LangContext';
+import { LangProvider } from './store/LangContext';
 import Layout from './components/Layout';
 import Dashboard from './pages/Dashboard';
 import Upload from './pages/Upload';

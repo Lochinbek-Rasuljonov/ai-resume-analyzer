@@ -1,12 +1,12 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { ExternalLink, Zap, Award, Sun, Moon } from 'lucide-react';
-import { useAuth } from '../store/AuthContext';
-import { useLang } from '../store/LangContext';
-import { useTheme } from '../store/ThemeContext';
+import { useAuth } from '../store/hooks';
+import { useLang } from '../store/hooks';
+import { useTheme } from '../store/hooks';
 import { langLabels, type Lang } from '../i18n';
+import { tg } from '../telegram';
 
-const tg = (window as any).Telegram?.WebApp;
 const LANGS: Lang[] = ['uz', 'kk', 'ru', 'en'];
 
 const openLink = (url: string) => {

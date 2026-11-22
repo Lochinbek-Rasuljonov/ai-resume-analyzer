@@ -1,5 +1,7 @@
 import os
 from pathlib import Path
+
+from django.core.exceptions import ImproperlyConfigured
 from datetime import timedelta
 from dotenv import load_dotenv
 from urllib.parse import urlparse
@@ -8,11 +10,16 @@ load_dotenv()
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-d9yd6rijnhmlr844xk&3y3=-q67i0now^)d^hl0-w)7@9=hcv*')
+# Off unless asked for, so a server without a .env never runs in debug mode
+DEBUG = os.getenv('DEBUG', 'False') == 'True'
 
-DEBUG = os.getenv('DEBUG', 'True') == 'True'
+SECRET_KEY = os.getenv('SECRET_KEY', '')
+if not SECRET_KEY:
+    if not DEBUG:
+        raise ImproperlyConfigured('Set SECRET_KEY in backend/.env')
+    SECRET_KEY = 'insecure-local-development-key'
 
-ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', '*').split(',')
+ALLOWED_HOSTS = [h.strip() for h in os.getenv('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',') if h.strip()]
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -25,6 +32,7 @@ INSTALLED_APPS = [
     # Third party apps
     'rest_framework',
     'rest_framework_simplejwt',
+    'rest_framework_simplejwt.token_blacklist',
     'corsheaders',
 
     # Local apps
@@ -108,9 +116,9 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 AUTH_USER_MODEL = 'users.User'
 
-# CORS
-CORS_ALLOW_ALL_ORIGINS = True
-# In production, you would configure this to exactly your Mini App domain
+# CORS: the frontend is served by nginx on the same origin; other origins must be listed
+CORS_ALLOWED_ORIGINS = [o.strip() for o in os.getenv('CORS_ALLOWED_ORIGINS', '').split(',') if o.strip()]
+CORS_ALLOW_ALL_ORIGINS = DEBUG and not CORS_ALLOWED_ORIGINS
 
 # REST Framework
 REST_FRAMEWORK = {
@@ -138,4 +146,9 @@ CELERY_TASK_SERIALIZER = 'json'
 
 # External APIs
 TELEGRAM_BOT_TOKEN = os.getenv('TELEGRAM_BOT_TOKEN', '')
+TELEGRAM_AUTH_MAX_AGE = int(os.getenv('TELEGRAM_AUTH_MAX_AGE', str(24 * 3600)))  # seconds
 GEMINI_API_KEY = os.getenv('GEMINI_API_KEY', '')
+GEMINI_MODEL = os.getenv('GEMINI_MODEL', 'gemini-2.5-flash')
+
+MAX_RESUME_SIZE = 10 * 1024 * 1024  # bytes
+

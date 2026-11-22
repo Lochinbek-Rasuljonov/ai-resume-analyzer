@@ -3,11 +3,11 @@ import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { motion, type Variants } from 'framer-motion';
 import { Plus, ChevronRight, Clock, CheckCircle2, AlertCircle, Loader2, Zap, FileText } from 'lucide-react';
-import { useAuth } from '../store/AuthContext';
-import { useLang } from '../store/LangContext';
+import { useAuth } from '../store/hooks';
+import { useLang } from '../store/hooks';
 import api from '../services/api';
+import { tg } from '../telegram';
 
-const tg = (window as any).Telegram?.WebApp;
 
 const stagger: { container: Variants; item: Variants } = {
   container: { hidden: {}, show: { transition: { staggerChildren: 0.07 } } },
@@ -30,6 +30,16 @@ const ScoreBar: React.FC<{ score: number }> = ({ score }) => {
   );
 };
 
+interface ResumeItem {
+  id: number;
+  original_filename: string;
+  status: 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED';
+  uploaded_at: string;
+  analysis: { ats_score: number } | null;
+}
+
+const isRunning = (r: ResumeItem) => r.status === 'PROCESSING' || r.status === 'PENDING';
+
 const Dashboard: React.FC = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -37,15 +47,12 @@ const Dashboard: React.FC = () => {
 
   const { data: resumes = [], isLoading } = useQuery({
     queryKey: ['resumes'],
-    queryFn: async () => (await api.get('resumes/')).data,
-    refetchInterval: (q) => {
-      const d = q.state.data as any[];
-      return d?.some((r: any) => ['PROCESSING', 'PENDING'].includes(r.status)) ? 3000 : false;
-    },
+    queryFn: async () => (await api.get<ResumeItem[]>('resumes/')).data,
+    refetchInterval: (q) => (q.state.data?.some(isRunning) ? 3000 : false),
   });
 
-  const completed = resumes.filter((r: any) => r.status === 'COMPLETED').length;
-  const pending = resumes.filter((r: any) => ['PROCESSING', 'PENDING'].includes(r.status)).length;
+  const completed = resumes.filter((r) => r.status === 'COMPLETED').length;
+  const pending = resumes.filter(isRunning).length;
 
   const statusMap: Record<string, { label: string; Icon: React.ElementType; color: string; bg: string }> = {
     COMPLETED: { label: t('statusCompleted'), Icon: CheckCircle2, color: 'var(--success)', bg: 'var(--success-muted)' },
@@ -155,7 +162,7 @@ const Dashboard: React.FC = () => {
         ) : (
           <motion.div variants={stagger.container} initial="hidden" animate="show"
             style={{ background: 'var(--surface)', borderRadius: 20, overflow: 'hidden', boxShadow: 'var(--card-shadow)' }}>
-            {resumes.map((resume: any, i: number) => {
+            {resumes.map((resume, i) => {
               const sc = statusMap[resume.status] || statusMap.PENDING;
               const StatusIcon = sc.Icon;
               const clickable = resume.status === 'COMPLETED';

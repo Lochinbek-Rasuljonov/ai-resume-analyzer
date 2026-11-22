@@ -25,23 +25,18 @@ class TelegramAuthView(APIView):
             if not telegram_id:
                 return Response({"error": "Missing user ID"}, status=status.HTTP_400_BAD_REQUEST)
                 
-            # Create or update user
-            user, created = User.objects.update_or_create(
+            user, _ = User.objects.update_or_create(
                 telegram_id=telegram_id,
                 defaults={
                     'first_name': user_data.get('first_name', ''),
                     'last_name': user_data.get('last_name', ''),
-                    'username': user_data.get('username', ''),
+                    # Not every Telegram account has a username, and the field must be unique
+                    'username': user_data.get('username') or f"tg_{telegram_id}",
                     'photo_url': user_data.get('photo_url', ''),
                     'language_code': user_data.get('language_code', ''),
                 }
             )
-            
-            if created and not user.username:
-                user.username = f"tg_{telegram_id}"
-                user.save()
-                
-            # Generate Tokens
+
             refresh = RefreshToken.for_user(user)
             
             return Response({

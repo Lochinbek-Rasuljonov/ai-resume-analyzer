@@ -4,7 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
 import { BarChart2, Lightbulb, FileText, Copy, Check } from 'lucide-react';
 import api from '../services/api';
-import { useLang } from '../store/LangContext';
+import { useLang } from '../store/hooks';
 
 type Tab = 'overview' | 'tips' | 'docs';
 
@@ -170,11 +170,11 @@ const AnalysisDetail: React.FC = () => {
                 <div style={{ background: 'var(--surface)', borderRadius: 18, padding: '16px 18px', boxShadow: 'var(--card-shadow)' }}>
                   <p style={{ fontSize: 12, color: 'var(--fg3)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 12 }}>{t('keywords')}</p>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                    {Object.entries(analysis.keyword_matching).map(([k, v]: [string, any]) => {
+                    {Object.entries(analysis.keyword_matching).map(([k, v]) => {
                       const strong = v === 'Strong' || v === 'Kuchli';
                       return (
                         <span key={k} style={{ padding: '5px 12px', borderRadius: 999, background: strong ? 'var(--success-muted)' : 'var(--accent-muted)', color: strong ? 'var(--success)' : 'var(--accent)', fontSize: 12, fontWeight: 600 }}>
-                          {k}: {v}
+                          {k}: {String(v)}
                         </span>
                       );
                     })}

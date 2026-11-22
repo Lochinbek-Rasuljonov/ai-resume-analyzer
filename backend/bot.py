@@ -6,12 +6,10 @@ from dotenv import load_dotenv
 load_dotenv()
 
 BOT_TOKEN = os.getenv('TELEGRAM_BOT_TOKEN')
-# This should be your ngrok URL or production HTTPS URL where the frontend is hosted
-WEBAPP_URL = os.getenv('WEBAPP_URL', 'https://lochinbek.ngrok-free.app') 
+WEBAPP_URL = os.getenv('WEBAPP_URL')  # public HTTPS address of the frontend
 
-if not BOT_TOKEN:
-    print("Error: TELEGRAM_BOT_TOKEN is missing in .env")
-    exit(1)
+if not BOT_TOKEN or not WEBAPP_URL:
+    raise SystemExit("Set TELEGRAM_BOT_TOKEN and WEBAPP_URL in backend/.env")
 
 bot = telebot.TeleBot(BOT_TOKEN)
 
